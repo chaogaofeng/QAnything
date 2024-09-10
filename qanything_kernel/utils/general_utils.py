@@ -620,3 +620,27 @@ def check_and_transform_excel(binary_data):
         transformed_data.append({"question": row['问题'], "answer": row['答案']})
 
     return transformed_data
+
+
+def upload_file(file_path, file_name):
+    import oss2
+
+    # 阿里云OSS配置
+    access_key_id = os.getenv('OSS_AK_ID', '')
+    access_key_secret = os.getenv('OSS_AK_SECRET', '')
+    endpoint = os.getenv('OSS_ENDPOINT', 'https://oss-cn-hangzhou.aliyuncs.com')
+    bucket_name = 'aihera'
+
+    # 初始化OSS
+    auth = oss2.Auth(access_key_id, access_key_secret)
+    # 初始化bucket
+    bucket = oss2.Bucket(auth, endpoint, bucket_name)
+    try:
+        bucket.get_bucket_info()
+    except Exception as e:
+        # 创建 bucket
+        bucket.create_bucket(oss2.BUCKET_ACL_PUBLIC_READ)
+
+    bucket.put_object_from_file(f'qanything/{file_name}', file_path)
+
+    return f'https://{bucket_name}.oss-cn-hangzhou.aliyuncs.com/qanything/{file_name}'

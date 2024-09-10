@@ -1,5 +1,6 @@
 import sys
 import os
+
 # 获取当前脚本的绝对路径
 current_script_path = os.path.abspath(__file__)
 
@@ -71,6 +72,13 @@ async def start_server_and_open_browser(app, loop):
 # app.add_route(lambda req: response.redirect('/api/docs'), '/')
 # tags=["新建知识库"]
 app.add_route(document, "/api/docs", methods=['GET'])
+app.add_route(list_models, "/api/local_doc_qa/list_models", methods=['POST'])  # tags=["模型列表"]
+app.add_route(list_embed, "/api/local_doc_qa/list_embed", methods=['POST'])  # tags=["向量模型列表"]
+app.add_route(list_tools, "/api/local_doc_qa/list_tools", methods=['POST'])  # tags=["工具列表"]
+app.add_route(list_roles, "/api/local_doc_qa/list_preroles", methods=['POST'])  # tags=["角色设定"]
+app.add_route(statistic, "/api/local_doc_qa/statistic", methods=['POST'])  # tags=["统计信息"]
+app.add_route(embed_docs, "/api/local_doc_qa/embed_files", methods=['POST'])  # tags=["训练文件"]
+
 app.add_route(health_check, "/api/health_check", methods=['GET'])  # tags=["健康检查"]
 app.add_route(new_knowledge_base, "/api/local_doc_qa/new_knowledge_base", methods=['POST'])  # tags=["新建知识库"]
 app.add_route(upload_weblink, "/api/local_doc_qa/upload_weblink", methods=['POST'])  # tags=["上传网页链接"]

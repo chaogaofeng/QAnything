@@ -124,6 +124,9 @@ class KnowledgeBaseManager:
                 kb_id VARCHAR(255) UNIQUE,
                 user_id VARCHAR(255),
                 kb_name VARCHAR(255),
+                kb_desc TEXT,
+                kb_embed VARCHAR(255),
+                create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 deleted BOOL DEFAULT 0,
                 latest_qa_time TIMESTAMP,
                 latest_insert_time TIMESTAMP 
@@ -149,7 +152,9 @@ class KnowledgeBaseManager:
                 file_url VARCHAR(2048) DEFAULT '',
                 upload_infos TEXT,
                 chunk_size INT DEFAULT -1,
-                timestamp VARCHAR(255) DEFAULT '197001010000'
+                timestamp VARCHAR(255) DEFAULT '197001010000',
+                oss_path VARCHAR(512),
+                tp INT DEFAULT 0
             );
 
         """
@@ -244,7 +249,13 @@ class KnowledgeBaseManager:
                 prompt_setting  LONGTEXT,
                 welcome_message LONGTEXT,
                 model           VARCHAR(100),
-                kb_ids_str      VARCHAR(1024),
+                kb_ids_str      TEXT,
+                tools_str       TEXT,
+                max_token       INT DEFAULT 512,
+                status          INT DEFAULT 0,
+                hybridSearch    INT DEFAULT 0,
+                networking      INT DEFAULT 0,
+                needSource      INT DEFAULT 0,
                 deleted         INT DEFAULT 0,
                 create_time     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 update_time     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -317,6 +328,14 @@ class KnowledgeBaseManager:
         unvalid_kb_ids = list(set(kb_ids) - set(valid_kb_ids))
         return unvalid_kb_ids
 
+    def get_file_by_id(self, kb_ids, file_ids):
+        kb_ids_str = ','.join("'{}'".format(str(x)) for x in kb_ids)
+        file_ids_str = ','.join("'{}'".format(str(x)) for x in file_ids)
+        query = "SELECT file_id, file_name FROM File WHERE kb_id IN ({}) AND deleted = 0 AND file_id IN %s".format(
+            kb_ids_str)
+        result = self.execute_query_(query, (file_ids_str,), fetch=True)
+        return result
+
     def get_file_by_status(self, kb_ids, status):
         kb_ids_str = ','.join("'{}'".format(str(x)) for x in kb_ids)
         query = "SELECT file_id, file_name FROM File WHERE kb_id IN ({}) AND deleted = 0 AND status = %s".format(
@@ -377,20 +396,41 @@ class KnowledgeBaseManager:
         self.execute_query_(query, (user_id, user_name), commit=True)
         debug_logger.info(f"Add user: {user_id} {user_name}")
 
-    def new_milvus_base(self, kb_id, user_id, kb_name, user_name=None):
+    def new_milvus_base(self, kb_id, user_id, kb_name, user_name=None, kb_desc=None, kb_embed=None):
         if not self.check_user_exist_(user_id):
             self.add_user_(user_id, user_name)
-        query = "INSERT INTO KnowledgeBase (kb_id, user_id, kb_name) VALUES (%s, %s, %s)"
-        self.execute_query_(query, (kb_id, user_id, kb_name), commit=True)
+        query = "INSERT INTO KnowledgeBase (kb_id, user_id, kb_name, kb_desc, kb_embed) VALUES (%s, %s, %s, %s, %s)"
+        self.execute_query_(query, (kb_id, user_id, kb_name, kb_desc, kb_embed), commit=True)
         return kb_id, "success"
 
     # [知识库] 获取指定用户的所有知识库
-    def get_knowledge_bases(self, user_id):
+    def get_knowledge_bases(self, user_id, page=None, limit=None):
         # 只获取后缀为KB_SUFFIX的知识库
-        query = (f"SELECT kb_id, kb_name FROM KnowledgeBase WHERE user_id = %s AND deleted = 0 AND "
-                 f"(kb_id LIKE '%{KB_SUFFIX}' OR kb_id LIKE '%{KB_SUFFIX}_FAQ')")
+        if page and limit:
+            query = (
+                f"SELECT kb_id, kb_name, kb_desc, kb_embed FROM KnowledgeBase WHERE user_id = %s AND deleted = 0 AND "
+                f"(kb_id LIKE '%{KB_SUFFIX}' OR kb_id LIKE '%{KB_SUFFIX}_FAQ') ORDER BY create_time DESC LIMIT %s OFFSET %s")
+            # query = "SELECT kb_id, kb_name FROM KnowledgeBase WHERE user_id = %s AND deleted = 0"
+            return self.execute_query_(query, (user_id, limit, (page - 1) * limit,), fetch=True)
+        query = (f"SELECT kb_id, kb_name, kb_desc, kb_embed FROM KnowledgeBase WHERE user_id = %s AND deleted = 0 AND "
+                 f"(kb_id LIKE '%{KB_SUFFIX}' OR kb_id LIKE '%{KB_SUFFIX}_FAQ') ORDER BY create_time DESC ")
         # query = "SELECT kb_id, kb_name FROM KnowledgeBase WHERE user_id = %s AND deleted = 0"
         return self.execute_query_(query, (user_id,), fetch=True)
+
+    def get_knowledge_bases_count(self, user_id, date_start=None, date_end=None):
+        # 只获取后缀为KB_SUFFIX的知识库
+        if date_start and date_end:
+            query = (
+                "SELECT COUNT(kb_id) FROM KnowledgeBase WHERE user_id = %s AND create_time BETWEEN %s AND %s AND deleted = 0 AND "
+                f"(kb_id LIKE '%{KB_SUFFIX}' OR kb_id LIKE '%{KB_SUFFIX}_FAQ') ")
+            result = self.execute_query_(query, (user_id, date_start, date_end), fetch=True)
+            return result[0][0] if result else 0
+
+        query = (f"SELECT COUNT(kb_id) FROM KnowledgeBase WHERE user_id = %s AND deleted = 0 AND "
+                 f"(kb_id LIKE '%{KB_SUFFIX}' OR kb_id LIKE '%{KB_SUFFIX}_FAQ') ")
+        # query = "SELECT kb_id, kb_name FROM KnowledgeBase WHERE user_id = %s AND deleted = 0"
+        result = self.execute_query_(query, (user_id,), fetch=True)
+        return result[0][0] if result else 0
 
     def get_users(self):
         query = "SELECT user_id FROM User"
@@ -407,7 +447,7 @@ class KnowledgeBaseManager:
     # [知识库] 获取指定kb_ids的知识库
     def get_knowledge_base_name(self, kb_ids):
         kb_ids_str = ','.join("'{}'".format(str(x)) for x in kb_ids)
-        query = "SELECT user_id, kb_id, kb_name FROM KnowledgeBase WHERE kb_id IN ({}) AND deleted = 0".format(
+        query = "SELECT user_id, kb_id, kb_name, kb_desc, kb_embed FROM KnowledgeBase WHERE kb_id IN ({}) AND deleted = 0".format(
             kb_ids_str)
         return self.execute_query_(query, (), fetch=True)
 
@@ -423,9 +463,9 @@ class KnowledgeBaseManager:
         self.execute_query_(query, (user_id,), commit=True)
 
     # [知识库] 重命名知识库
-    def rename_knowledge_base(self, user_id, kb_id, kb_name):
-        query = "UPDATE KnowledgeBase SET kb_name = %s WHERE kb_id = %s AND user_id = %s"
-        self.execute_query_(query, (kb_name, kb_id, user_id), commit=True)
+    def rename_knowledge_base(self, user_id, kb_id, kb_name, kb_desc, kb_embed):
+        query = "UPDATE KnowledgeBase SET kb_name = %s, kb_desc = %s, kb_embed = %s WHERE kb_id = %s AND user_id = %s"
+        self.execute_query_(query, (kb_name, kb_desc, kb_embed, kb_id, user_id), commit=True)
 
     def update_knowledge_base_latest_qa_time(self, kb_id, timestamp):
         # timestamp的格式为'2021-08-01 00:00:00'
@@ -438,11 +478,14 @@ class KnowledgeBaseManager:
 
     # [文件] 向指定知识库下面增加文件
     def add_file(self, file_id, user_id, kb_id, file_name, file_size, file_location, chunk_size, timestamp, file_url='',
-                 status="gray"):
+                 status="gray", tp=1, oss_path=None):
         query = ("INSERT INTO File (file_id, user_id, kb_id, file_name, status, file_size, file_location, chunk_size, "
-                 "timestamp, file_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+                 "timestamp, file_url, tp, oss_path) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
         self.execute_query_(query,
-                            (file_id, user_id, kb_id, file_name, status, file_size, file_location, chunk_size, timestamp, file_url),
+                            (
+                                file_id, user_id, kb_id, file_name, status, file_size, file_location, chunk_size,
+                                timestamp,
+                                file_url, tp, oss_path),
                             commit=True)
         return "success"
 
@@ -465,14 +508,11 @@ class KnowledgeBaseManager:
         query = "UPDATE File SET status = %s WHERE file_id IN ({}) AND status = %s".format(file_ids_str)
         self.execute_query_(query, (to_status, from_status), commit=True)
 
-    def get_files(self, user_id, kb_id, file_id=None):
-        limit = 100
-        offset = 0
-        all_files = []
-
+    def get_files(self, user_id, kb_id, file_id=None, tp=0, page=None, limit=None):
+        files = []
         base_query = """
             SELECT file_id, file_name, status, file_size, content_length, timestamp,
-                   file_location, file_url, chunk_size, msg
+                   file_location, file_url, chunk_size, msg, oss_path
             FROM File
             WHERE kb_id = %s AND deleted = 0
         """
@@ -488,18 +528,29 @@ class KnowledgeBaseManager:
             files = self.execute_query_(query, current_params, fetch=True)
             return files
 
-        while True:
-            query = base_query + " LIMIT %s OFFSET %s"
-            current_params = params + [limit, offset]
+        if page and limit:
+            if tp:
+                query = base_query + "AND tp = %s ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+                current_params = params + [tp, limit, (page - 1) * limit]
+            else:
+                query = base_query + " ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+                current_params = params + [limit, (page - 1) * limit]
+            files = self.execute_query_(query, current_params, fetch=True)
+        else:
+            if tp:
+                query = base_query + "AND tp = %s ORDER BY timestamp DESC"
+                current_params = params + [tp]
+            else:
+                query = base_query + " ORDER BY timestamp DESC"
+                current_params = params
             files = self.execute_query_(query, current_params, fetch=True)
 
-            if not files:
-                break
+        return files
 
-            all_files.extend(files)
-            offset += limit
-
-        return all_files
+    def get_files_count(self, user_id, kb_id, tp=1):
+        query = "SELECT COUNT(file_id) FROM File WHERE kb_id = %s AND kb_id IN (SELECT kb_id FROM KnowledgeBase WHERE user_id = %s) AND tp = %s AND deleted = 0"
+        result = self.execute_query_(query, (kb_id, user_id, tp), fetch=True)
+        return result[0][0] if result else 0
 
     def get_total_status_by_date(self, user_id):
         # 查询指定用户上传的文件数量，按日期和状态分组
@@ -680,7 +731,8 @@ class KnowledgeBaseManager:
                                            history, condense_question, prompt, result, retrieval_documents,
                                            source_documents), commit=True)
 
-    def get_qalog_by_filter(self, need_info, user_id=None, query=None, bot_id=None, time_range=None, any_kb_id=None, qa_ids=None):
+    def get_qalog_by_filter(self, need_info, user_id=None, query=None, bot_id=None, time_range=None, any_kb_id=None,
+                            qa_ids=None):
         # 判断哪些条件不是None，构建搜索query
         need_info = ", ".join(need_info)
         if qa_ids is not None:
@@ -835,10 +887,14 @@ class KnowledgeBaseManager:
         return result is not None and len(result) > 0
 
     def new_qanything_bot(self, bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message,
-                          model, kb_ids_str):
-        query = "INSERT INTO QanythingBot (bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                          model, kb_ids_str, tools_str=None, max_token=512, status=0, hybridSearch=0, networking=0,
+                          needSource=0):
+        query = (
+            "INSERT INTO QanythingBot (bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
         self.execute_query_(query, (
-        bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str),
+            bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str,
+            tools_str, max_token, status, hybridSearch, networking, needSource),
                             commit=True)
         return bot_id, "success"
 
@@ -849,21 +905,34 @@ class KnowledgeBaseManager:
 
     def get_bot(self, user_id, bot_id):
         if not bot_id:
-            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, update_time, user_id FROM QanythingBot WHERE user_id = %s AND deleted = 0"
+            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id FROM QanythingBot WHERE user_id = %s AND deleted = 0"
             return self.execute_query_(query, (user_id,), fetch=True)
         elif not user_id:
-            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, update_time, user_id FROM QanythingBot WHERE bot_id = %s AND deleted = 0"
+            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id FROM QanythingBot WHERE bot_id = %s AND deleted = 0"
             return self.execute_query_(query, (bot_id,), fetch=True)
         else:
-            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, update_time, user_id FROM QanythingBot WHERE user_id = %s AND bot_id = %s AND deleted = 0"
+            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id FROM QanythingBot WHERE user_id = %s AND bot_id = %s AND deleted = 0"
             return self.execute_query_(query, (user_id, bot_id), fetch=True)
 
+    def get_bot_count(self, user_id, date_start=None, date_end=None):
+        if date_start and date_end:
+            query = "SELECT COUNT(bot_id) FROM QanythingBot WHERE user_id = %s AND create_time BETWEEN %s AND %s AND deleted = 0"
+            result = self.execute_query_(query, (user_id, date_start, date_end), fetch=True)
+            return result[0][0] if result else 0
+        else:
+            query = "SELECT COUNT(bot_id) FROM QanythingBot WHERE user_id = %s AND deleted = 0"
+        result = self.execute_query_(query, (user_id,), fetch=True)
+        return result[0][0] if result else 0
+
     def update_bot(self, user_id, bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model,
-                   kb_ids_str, update_time):
-        query = "UPDATE QanythingBot SET bot_name = %s, description = %s, head_image = %s, prompt_setting = %s, welcome_message = %s, model = %s, kb_ids_str = %s, update_time = %s WHERE user_id = %s AND bot_id = %s AND deleted = 0"
+                   kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time):
+        query = (
+            "UPDATE QanythingBot SET bot_name = %s, description = %s, head_image = %s, prompt_setting = %s, welcome_message = %s, model = %s, kb_ids_str = %s, "
+            "tools_str = %s, max_token = %s, status = %s, hybridSearch = %s, networking = %s, needSource = %s, update_time = %s WHERE user_id = %s AND bot_id = %s AND deleted = 0")
         self.execute_query_(query, (
-        bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, update_time, user_id,
-        bot_id), commit=True)
+            bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token,
+            status, hybridSearch, networking, needSource, update_time, user_id,
+            bot_id), commit=True)
 
     def get_files_by_status(self, status):
         query = "SELECT file_id, file_name FROM File WHERE status = %s AND deleted = 0"

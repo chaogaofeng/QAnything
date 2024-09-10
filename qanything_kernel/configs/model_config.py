@@ -163,3 +163,37 @@ BOT_PROMPT = """
 - 不要编造答案，如果答案不在经核实的资料中或无法从经核实的资料中得出，请回答“我无法回答您的问题。”（或者您可以修改为：如果给定的检索结果无法回答问题，可以利用你的知识尽可能回答用户的问题。)
 """
 BOT_WELCOME = "您好，我是您的专属机器人，请问有什么可以帮您呢？"
+
+SUPPPORT_MODELS = {
+    "glm-4":
+        {
+            "name": "glm-4",
+            "desc": "智谱",
+            "api_base": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "",
+            "api_context_length": 4096,
+            "top_p": 0.99,
+            "temperature": 0.5
+        },
+    "qwen-max":
+        {
+            "name": "glm-4",
+            "desc": "智谱",
+            "api_base": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "",
+            "api_context_length": 4096,
+            "top_p": 0.99,
+            "temperature": 0.5
+        },
+    "qwen-plus":
+        {
+            "name": "glm-4",
+            "desc": "智谱",
+            "api_base": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "",
+            "api_context_length": 4096,
+            "top_p": 0.99,
+            "temperature": 0.5
+        }
+
+}

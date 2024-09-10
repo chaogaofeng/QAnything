@@ -155,7 +155,7 @@ async def check_and_process(pool):
                 async with conn.cursor() as cur:  # 创建游标
                     query = f"""
                         SELECT id, timestamp, file_id, file_name FROM File
-                        WHERE status = 'gray' AND MOD(id, %s) = %s AND deleted = 0
+                        WHERE status = 'yellow' AND MOD(id, %s) = %s AND deleted = 0
                         ORDER BY timestamp ASC LIMIT 1;
                     """
 
@@ -170,11 +170,11 @@ async def check_and_process(pool):
 
                         id, timestamp, file_id, file_name = file_to_update
                         # 更新这条记录的状态
-                        await cur.execute("""
-                            UPDATE File SET status='yellow'
-                            WHERE id=%s;
-                        """, (id,))
-                        await conn.commit()
+                        # await cur.execute("""
+                        #     UPDATE File SET status='yellow'
+                        #     WHERE id=%s;
+                        # """, (id,))
+                        # await conn.commit()
                         insert_logger.info(f"UPDATE FILE: {timestamp}, {file_id}, {file_name}, yellow")
 
                         await cur.execute(
