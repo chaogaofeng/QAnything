@@ -879,7 +879,7 @@ async def local_doc_chat(req: request):
         chat_data = {'user_id': user_id, 'kb_ids': kb_ids, 'query': question, 'time_record': formatted_time_record,
                      'history': history, "condense_question": resp['condense_question'], "model": model,
                      "product_source": request_source,
-                     'retrieval_documents': retrieval_documents, 'prompt': resp['prompt'], 'result': resp['result'],
+                     'retrieval_documents': retrieval_documents, 'prompt': resp['prompt'], 'result': history[-1][1],
                      'source_documents': source_documents, 'bot_id': bot_id}
         local_doc_qa.milvus_summary.add_qalog(**chat_data)
         qa_logger.info("chat_data: %s", chat_data)
