@@ -693,6 +693,7 @@ async def local_doc_chat(req: request):
     if top_k > 100:
         return sanic_json({"code": 2003, "msg": "fail, top_k should less than or equal to 100"})
 
+    need_web_search = False
     missing_params = []
     if not api_base:
         missing_params.append('api_base')
@@ -1517,13 +1518,16 @@ async def embed_docs(req: request):
             valid_file_ids.append(file_info[0])
     # milvus_kb = local_doc_qa.match_milvus_kb(user_id, [kb_id])
     # milvus_kb.delete_files(file_ids)
-    expr = f"""kb_id == "{kb_id}" and file_id in {valid_file_ids}"""  # 删除数据库中的记录
-    asyncio.create_task(run_in_background(local_doc_qa.milvus_kb.delete_expr, expr))
-    # local_doc_qa.milvus_kb.delete_expr(expr)
-    file_chunks = local_doc_qa.milvus_summary.get_chunk_size(valid_file_ids)
-    asyncio.create_task(run_in_background(local_doc_qa.es_client.delete_files, valid_file_ids, file_chunks))
+    if valid_file_ids:
+        expr = f"""kb_id == "{kb_id}" and file_id in {valid_file_ids}"""  # 删除数据库中的记录
+        asyncio.create_task(run_in_background(local_doc_qa.milvus_kb.delete_expr, expr))
+        # local_doc_qa.milvus_kb.delete_expr(expr)
+        file_chunks = local_doc_qa.milvus_summary.get_chunk_size(valid_file_ids)
+        if file_chunks:
+            asyncio.create_task(run_in_background(local_doc_qa.es_client.delete_files, valid_file_ids, file_chunks))
 
-    local_doc_qa.milvus_summary.update_file_status(file_ids, 'yellow')
+    for file_id in valid_file_ids:
+        local_doc_qa.milvus_summary.update_file_status(file_id, 'yellow')
 
     return sanic_json({"code": 200, "msg": "documents {} embed success".format(valid_file_ids)})
 
