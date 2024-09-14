@@ -647,7 +647,7 @@ async def local_doc_chat(req: request):
     debug_logger.info('user_info %s', user_info)
     bot_id = safe_get(req, 'bot_id')
     question = safe_get(req, 'question')
-    rerank = safe_get(req, 'rerank', default=True)
+    rerank = safe_get(req, 'rerank', default=False)
     debug_logger.info('rerank %s', rerank)
     streaming = safe_get(req, 'streaming', False)
     history = safe_get(req, 'history', [])
