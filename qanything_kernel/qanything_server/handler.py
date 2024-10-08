@@ -407,8 +407,8 @@ async def list_docs(req: request):
     debug_logger.info("kb_id: {}".format(kb_id))
     file_id = safe_get(req, 'file_id')
     tp = safe_get(req, 'tp', 1)
-    page_id = safe_get(req, 'page_id', 1)  # 默认为第一页
-    page_limit = safe_get(req, 'page_limit', 10)  # 默认每页显示10条记录
+    page_id = safe_get(req, 'pageNum', 1)  # 默认为第一页
+    page_limit = safe_get(req, 'pageSize', 10)  # 默认每页显示10条记录
     data = []
     if file_id is None:
         file_infos = local_doc_qa.milvus_summary.get_files(user_id, kb_id, tp=tp, page=page_id, limit=page_limit)
@@ -1049,8 +1049,8 @@ async def get_qa_info(req: request):
         qa_infos_by_day = dict(Counter(qa_infos))
         return sanic_json({"code": 200, "msg": "success", "qa_infos_by_day": qa_infos_by_day})
 
-    page_id = safe_get(req, 'page_id', 1)
-    page_limit = safe_get(req, 'page_limit', 10)
+    page_id = safe_get(req, 'pageNum', 1)
+    page_limit = safe_get(req, 'pageSize', 100)
     default_need_info = ["qa_id", "user_id", "bot_id", "kb_ids", "query", "model", "product_source", "time_record",
                          "history", "condense_question", "prompt", "result", "retrieval_documents", "source_documents",
                          "timestamp"]
