@@ -443,7 +443,7 @@ class LocalDocQA:
             model = ChatOpenAI(model_name=model, api_key=api_key, base_url=api_base)
             result = weathercheck(model, query)
             if "无法提供天气预报" not in result:
-                source_documents += [Document(page_content=result)]
+                source_documents += [Document(page_content=result, metadata ={'score': 0.9})]
             t2 = time.perf_counter()
             time_record['weather_tool'] = round(t2 - t1, 2)
 
