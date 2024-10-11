@@ -433,13 +433,13 @@ class LocalDocQA:
             if clear_string(condense_question) != clear_string(query):
                 retrieval_query = condense_question
 
-        if kb_ids:
+        only_weather = "天气" in query
+        if not only_weather and kb_ids:
             source_documents = await self.get_source_documents(retrieval_query, retriever, kb_ids, time_record,
                                                                hybrid_search, top_k)
         else:
             source_documents = []
 
-        only_weather = "天气" in query
         if only_weather or need_weather_tool:
             t1 = time.perf_counter()
             model = ChatOpenAI(model_name=model, api_key=api_key, base_url=api_base)
