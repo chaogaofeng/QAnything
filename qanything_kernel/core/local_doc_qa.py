@@ -118,7 +118,7 @@ class LocalDocQA:
             retriever.vectorstore_client = VectorStoreMilvusClient()
             debug_logger.warning("MILVUS CLIENT RESTARTED!")
             query_docs = await retriever.get_retrieved_documents(query, partition_keys=kb_ids, time_record=time_record,
-                                                                    hybrid_search=hybrid_search, top_k=top_k)
+                                                                 hybrid_search=hybrid_search, top_k=top_k)
         end_time = time.perf_counter()
         time_record['retriever_search'] = round(end_time - start_time, 2)
         debug_logger.info(f"retriever_search time: {time_record['retriever_search']}s")
@@ -366,9 +366,11 @@ class LocalDocQA:
         return relevant_docs
 
     async def get_knowledge_based_answer(self, model, max_token, kb_ids, query, retriever, custom_prompt, time_record,
-                                         temperature, api_base, api_key, api_context_length, top_p, top_k, web_chunk_size,
+                                         temperature, api_base, api_key, api_context_length, top_p, top_k,
+                                         web_chunk_size,
                                          chat_history=None, streaming: bool = STREAMING, rerank: bool = False,
-                                         only_need_search_results: bool = False, need_weather_tool=False, need_web_search=False,
+                                         only_need_search_results: bool = False, need_weather_tool=False,
+                                         need_web_search=False,
                                          hybrid_search=False):
         custom_llm = OpenAILLM(model, max_token, api_base, api_key, api_context_length, top_p, temperature)
         if chat_history is None:
@@ -443,7 +445,7 @@ class LocalDocQA:
             model = ChatOpenAI(model_name=model, api_key=api_key, base_url=api_base)
             result = weathercheck(model, query)
             if "无法提供天气预报" not in result:
-                source_documents += [Document(page_content=result, metadata ={'score': 0.9})]
+                source_documents += [Document(page_content=result, metadata={'filename': '和风', 'score': 0.9})]
             t2 = time.perf_counter()
             time_record['weather_tool'] = round(t2 - t1, 2)
 
@@ -655,8 +657,9 @@ class LocalDocQA:
                 faq_dict = doc_json['kwargs']['metadata']['faq_dict']
                 doc.page_content = f"{faq_dict['question']}：{faq_dict['answer']}"
             completed_content_with_figure += doc.page_content + '\n\n'
-            completed_content += re.sub(r'!\[figure]\(.*?\)', '', doc.page_content) + '\n\n' # 删除图片
-        completed_doc_with_figure = Document(page_content=completed_content_with_figure, metadata=sorted_json_datas[0]['kwargs']['metadata'])
+            completed_content += re.sub(r'!\[figure]\(.*?\)', '', doc.page_content) + '\n\n'  # 删除图片
+        completed_doc_with_figure = Document(page_content=completed_content_with_figure,
+                                             metadata=sorted_json_datas[0]['kwargs']['metadata'])
         completed_doc = Document(page_content=completed_content, metadata=sorted_json_datas[0]['kwargs']['metadata'])
         # FIX metadata
         has_table = False
@@ -742,7 +745,8 @@ class LocalDocQA:
                 f"first_doc_tokens: {first_doc_tokens} + ori_second_docs_tokens: {ori_second_docs_tokens} <= limited_token_nums: {limited_token_nums}")
             new_docs.append(first_completed_doc_with_figure)
         if second_file_dict:
-            second_completed_doc, second_completed_doc_with_figure = self.get_completed_document(second_file_dict['file_id'])
+            second_completed_doc, second_completed_doc_with_figure = self.get_completed_document(
+                second_file_dict['file_id'])
             second_completed_doc.metadata['score'] = second_file_dict['score']
             second_doc_tokens = custom_llm.num_tokens_from_docs([second_completed_doc])
             if first_doc_tokens + second_doc_tokens > limited_token_nums:
