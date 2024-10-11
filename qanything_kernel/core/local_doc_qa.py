@@ -440,7 +440,7 @@ class LocalDocQA:
         only_weather = "天气" in query
         if only_weather or need_weather_tool:
             t1 = time.perf_counter()
-            model = ChatOpenAI(model_name='glm-4', api_key='', base_url='https://open.bigmodel.cn/api/paas/v4/')
+            model = ChatOpenAI(model_name=model, api_key=api_key, base_url=api_base)
             result = weathercheck(model, query)
             if "无法提供天气预报" not in result:
                 source_documents += [Document(page_content=result)]
