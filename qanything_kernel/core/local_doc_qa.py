@@ -1,3 +1,5 @@
+from langchain_community.chat_models import ChatOpenAI
+
 from qanything_kernel.configs.model_config import VECTOR_SEARCH_TOP_K, VECTOR_SEARCH_SCORE_THRESHOLD, \
     PROMPT_TEMPLATE, STREAMING, SYSTEM, INSTRUCTIONS, SIMPLE_PROMPT_TEMPLATE, CUSTOM_PROMPT_TEMPLATE, \
     LOCAL_RERANK_MODEL_NAME, LOCAL_EMBED_MAX_LENGTH
@@ -16,6 +18,7 @@ from qanything_kernel.connector.database.mysql.mysql_client import KnowledgeBase
 from qanything_kernel.core.retriever.vectorstore import VectorStoreMilvusClient
 from qanything_kernel.core.retriever.elasticsearchstore import StoreElasticSearchClient
 from qanything_kernel.core.retriever.parent_retriever import ParentRetriever
+from qanything_kernel.core.tools.weather_tool import weathercheck
 from qanything_kernel.utils.general_utils import (get_time, clear_string, get_time_async, num_tokens,
                                                   cosine_similarity, clear_string_is_equal, num_tokens_embed,
                                                   num_tokens_rerank, deduplicate_documents, replace_image_references)
@@ -365,7 +368,7 @@ class LocalDocQA:
     async def get_knowledge_based_answer(self, model, max_token, kb_ids, query, retriever, custom_prompt, time_record,
                                          temperature, api_base, api_key, api_context_length, top_p, top_k, web_chunk_size,
                                          chat_history=None, streaming: bool = STREAMING, rerank: bool = False,
-                                         only_need_search_results: bool = False, need_web_search=False,
+                                         only_need_search_results: bool = False, need_weather_tool=False, need_web_search=False,
                                          hybrid_search=False):
         custom_llm = OpenAILLM(model, max_token, api_base, api_key, api_context_length, top_p, temperature)
         if chat_history is None:
@@ -434,7 +437,17 @@ class LocalDocQA:
         else:
             source_documents = []
 
-        if need_web_search:
+        only_weather = "天气" in query
+        if only_weather or need_weather_tool:
+            t1 = time.perf_counter()
+            model = ChatOpenAI(model_name='glm-4', api_key='', base_url='https://open.bigmodel.cn/api/paas/v4/')
+            result = weathercheck(model, query)
+            if "无法提供天气预报" not in result:
+                source_documents += [Document(page_content=result)]
+            t2 = time.perf_counter()
+            time_record['weather_tool'] = round(t2 - t1, 2)
+
+        if not only_weather and need_web_search:
             t1 = time.perf_counter()
             web_search_results = self.web_page_search(query, top_k=3)
             web_splitter = RecursiveCharacterTextSplitter(
@@ -449,7 +462,7 @@ class LocalDocQA:
             source_documents += web_search_results
 
         source_documents = deduplicate_documents(source_documents)
-        if rerank and len(source_documents) > 1 and num_tokens_rerank(query) <= 300:
+        if not only_weather and rerank and len(source_documents) > 1 and num_tokens_rerank(query) <= 300:
             try:
                 t1 = time.perf_counter()
                 debug_logger.info(f"use rerank, rerank docs num: {len(source_documents)}")

@@ -667,6 +667,7 @@ async def local_doc_chat(req: request):
     request_source = safe_get(req, 'source', 'unknown')
     hybrid_search = safe_get(req, 'hybrid_search', False)
     web_chunk_size = safe_get(req, 'web_chunk_size', DEFAULT_PARENT_CHUNK_SIZE)
+    need_weather_tool = False
     if bot_id:
         if not local_doc_qa.milvus_summary.check_bot_is_exist(bot_id):
             return sanic_json({"code": 2003, "msg": "fail, Bot {} not found".format(bot_id)})
@@ -683,6 +684,7 @@ async def local_doc_chat(req: request):
             top_p = SUPPPORT_MODELS[model_name]['top_p']
             temperature = SUPPPORT_MODELS[model_name]['temperature']
             model = SUPPPORT_MODELS[model_name]['name']
+        need_weather_tool = "天气查询" in tools_str
     else:
         kb_ids = safe_get(req, 'kb_ids')
         custom_prompt = safe_get(req, 'custom_prompt', None)
@@ -693,7 +695,6 @@ async def local_doc_chat(req: request):
     if top_k > 100:
         return sanic_json({"code": 2003, "msg": "fail, top_k should less than or equal to 100"})
 
-    need_web_search = False
     missing_params = []
     if not api_base:
         missing_params.append('api_base')
@@ -778,6 +779,7 @@ async def local_doc_chat(req: request):
                                                                                     rerank=rerank,
                                                                                     custom_prompt=custom_prompt,
                                                                                     time_record=time_record,
+                                                                                    need_weather_tool=need_weather_tool,
                                                                                     need_web_search=need_web_search,
                                                                                     hybrid_search=hybrid_search,
                                                                                     web_chunk_size=web_chunk_size,
@@ -860,6 +862,7 @@ async def local_doc_chat(req: request):
                                                                            custom_prompt=custom_prompt,
                                                                            time_record=time_record,
                                                                            only_need_search_results=only_need_search_results,
+                                                                           need_weather_tool=need_weather_tool,
                                                                            need_web_search=need_web_search,
                                                                            hybrid_search=hybrid_search,
                                                                            web_chunk_size=web_chunk_size,
