@@ -1512,6 +1512,14 @@ async def embed_docs(req: request):
     not_exist_kb_ids = local_doc_qa.milvus_summary.check_kb_exist(user_id, [kb_id])
     if not_exist_kb_ids:
         return sanic_json({"code": 2003, "msg": "fail, knowledge Base {} not found".format(not_exist_kb_ids[0])})
+    all_qa = safe_get(req, "all_qa", 'false')
+    if all_qa.lower() == 'true':
+        file_ids = []
+        file_infos = local_doc_qa.milvus_summary.get_files(user_id, kb_id, tp=2)
+        for file_info in file_infos:
+            status = file_info[2]
+            if status == 'gray':  # 'gray': "未开始", 'yellow': "进行中",   'red': "失败", 'green': "成功"
+                file_ids = file_ids.append(file_info[0])
     valid_file_infos = local_doc_qa.milvus_summary.check_file_exist(user_id, kb_id, file_ids)
     if len(valid_file_infos) == 0:
         return sanic_json({"code": 2004, "msg": "fail, files {} not found".format(file_ids)})
