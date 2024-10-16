@@ -1513,7 +1513,7 @@ async def embed_docs(req: request):
     if not_exist_kb_ids:
         return sanic_json({"code": 2003, "msg": "fail, knowledge Base {} not found".format(not_exist_kb_ids[0])})
     all_qa = safe_get(req, "all_qa", 'false')
-    if all_qa.lower() == 'true':
+    if all_qa:
         file_ids = []
         file_infos = local_doc_qa.milvus_summary.get_files(user_id, kb_id, tp=2)
         for file_info in file_infos:
