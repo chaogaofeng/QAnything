@@ -84,7 +84,12 @@ class EmbeddingAsyncBackend:
                 start = 0
                 for future, text_count in futures:
                     end = start + text_count
-                    future.set_result(result[start:end])
+                    try:
+                        if not future.done():
+                            future.set_result(result[start:end])
+                    except Exception as e:
+                        # 适当地处理错误，例如记录错误
+                        print(f"设置结果时出错: {e}")
                     start = end
             else:
                 await asyncio.sleep(0.1)  # 如果没有文本要处理，短暂休眠
