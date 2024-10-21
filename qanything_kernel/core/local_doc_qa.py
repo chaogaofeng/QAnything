@@ -197,14 +197,16 @@ class LocalDocQA:
                 doc_valid_content = re.sub(r'!\[figure]\(.*?\)', '', doc.page_content)  # 生成prompt时去掉图片
                 file_id = doc.metadata['file_id']
                 if file_id not in not_repeated_file_ids:
-                    if len(not_repeated_file_ids) != 0:
-                        context += '</reference>\n'
+                    # if len(not_repeated_file_ids) != 0:
+                    #     context += '</reference>\n'
                     not_repeated_file_ids.append(file_id)
                     if 'headers' in doc.metadata:
-                        headers = f"headers={doc.metadata['headers']}"
-                        context += f"<reference {headers}>[{len(not_repeated_file_ids)}]" + '\n' + doc_valid_content + '\n'
+                        # headers = f"headers={doc.metadata['headers']}"
+                        # context += f"<reference {headers}>[{len(not_repeated_file_ids)}]" + '\n' + doc_valid_content + '\n'
+                        context += doc_valid_content + '\n'
                     else:
-                        context += f"<reference>[{len(not_repeated_file_ids)}]" + '\n' + doc_valid_content + '\n'
+                        # context += f"<reference>[{len(not_repeated_file_ids)}]" + '\n' + doc_valid_content + '\n'
+                        context += doc_valid_content + '\n'
                 else:
                     context += doc_valid_content + '\n'
             context += '</reference>\n'
