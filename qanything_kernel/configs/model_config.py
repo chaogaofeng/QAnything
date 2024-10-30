@@ -165,13 +165,63 @@ BOT_PROMPT = """
 BOT_WELCOME = "您好，我是您的专属机器人，请问有什么可以帮您呢？"
 
 SUPPPORT_MODELS = {
-    "glm-4":
+    "glm-4-plus":
         {
-            "name": "glm-4",
+            "name": "glm-4-plus",
             "desc": "智谱",
             "api_base": "https://open.bigmodel.cn/api/paas/v4/",
             "api_key": "",
-            "api_context_length": 4096,
+            "api_context_length": 126976,
+            "top_p": 0.99,
+            "temperature": 0.5
+        },
+    "glm-4":
+        {
+            "name": "glm-4-0520",
+            "desc": "智谱",
+            "api_base": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "",
+            "api_context_length": 126976,
+            "top_p": 0.99,
+            "temperature": 0.5
+        },
+    "glm-4-air":
+        {
+            "name": "glm-4-air",
+            "desc": "智谱",
+            "api_base": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "",
+            "api_context_length": 126976,
+            "top_p": 0.99,
+            "temperature": 0.5
+        },
+    "glm-4-airx":
+        {
+            "name": "glm-4-airx",
+            "desc": "智谱",
+            "api_base": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "",
+            "api_context_length": 8192,
+            "top_p": 0.99,
+            "temperature": 0.5
+        },
+    "glm-4-flash":
+        {
+            "name": "glm-4-flash",
+            "desc": "智谱",
+            "api_base": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "",
+            "api_context_length": 126976,
+            "top_p": 0.99,
+            "temperature": 0.5
+        },
+    "glm-4-flashx":
+        {
+            "name": "glm-4-flashx",
+            "desc": "智谱",
+            "api_base": "https://open.bigmodel.cn/api/paas/v4/",
+            "api_key": "",
+            "api_context_length": 126976,
             "top_p": 0.99,
             "temperature": 0.5
         },
@@ -181,7 +231,7 @@ SUPPPORT_MODELS = {
             "desc": "智谱",
             "api_base": "https://open.bigmodel.cn/api/paas/v4/",
             "api_key": "",
-            "api_context_length": 4096,
+            "api_context_length": 126976,
             "top_p": 0.99,
             "temperature": 0.5
         },
@@ -191,9 +241,8 @@ SUPPPORT_MODELS = {
             "desc": "智谱",
             "api_base": "https://open.bigmodel.cn/api/paas/v4/",
             "api_key": "",
-            "api_context_length": 4096,
+            "api_context_length": 126976,
             "top_p": 0.99,
             "temperature": 0.5
         }
-
 }
