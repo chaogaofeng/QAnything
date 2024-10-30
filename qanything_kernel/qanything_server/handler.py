@@ -635,7 +635,7 @@ async def clean_files_by_status(req: request):
 async def local_doc_chat(req: request):
     preprocess_start = time.perf_counter()
     local_doc_qa: LocalDocQA = req.app.ctx.local_doc_qa
-    user_id = safe_get(req, 'user_id')
+    user_id = safe_get(req, 'user_id', 'zzp694961')
     user_info = safe_get(req, 'user_info', "1234")
     passed, msg = check_user_id_and_user_info(user_id, user_info)
     if not passed:
@@ -1233,7 +1233,7 @@ async def health_check(req: request):
 @get_time_async
 async def get_bot_info(req: request):
     local_doc_qa: LocalDocQA = req.app.ctx.local_doc_qa
-    user_id = safe_get(req, 'user_id')
+    user_id = safe_get(req, 'user_id', 'zzp694961')
     user_info = safe_get(req, 'user_info', "1234")
     passed, msg = check_user_id_and_user_info(user_id, user_info)
     if not passed:
