@@ -451,7 +451,9 @@ class LocalDocQA:
                 if only_weather:
                     q = query
                 source_documents += [Document(page_content=result,
-                                              metadata={'file_name': '天气查询', 'file_id': '和风天气', 'score': 0.9})]
+                                              metadata={'file_name': '天气查询', 'file_id': '和风天气', 'score': 0.9, 'doc_id':'和风天气'})]
+            else:
+                debug_logger.error(f"weathercheck error: {result}")
             t2 = time.perf_counter()
             time_record['weather_tool'] = round(t2 - t1, 2)
 

@@ -218,8 +218,8 @@ def weather(query):
             place = adm + "市"
             weather_data = get_weather_now(key=key, location_id=location_id, place=place)
             return weather_data
-        except KeyError:
-            return "输入的地区不存在，无法提供天气预报"
+        except KeyError as e:
+            return f"输入的地区不存在，无法提供天气预报 {e}"
 
 
 class LLMWeatherChain(Chain):
@@ -270,7 +270,7 @@ class LLMWeatherChain(Chain):
         try:
             output = weather(expression)
         except Exception as e:
-            output = "输入的信息有误，请再次尝试"
+            output = f"输入的信息有误，请再次尝试 {e}"
         return output
 
     def _process_llm_result(
@@ -280,7 +280,7 @@ class LLMWeatherChain(Chain):
         run_manager.on_text(llm_output, color="green", verbose=self.verbose)
 
         llm_output = llm_output.strip()
-        text_match = re.search(r"^```text(.*?)```", llm_output, re.DOTALL)
+        text_match = re.search(r"```text(.*?)```", llm_output, re.DOTALL)
         if text_match:
             expression = text_match.group(1)
             output = self._evaluate_expression(expression)
@@ -292,7 +292,7 @@ class LLMWeatherChain(Chain):
         elif "Answer:" in llm_output:
             answer = "Answer: " + llm_output.split("Answer:")[-1]
         else:
-            return {self.output_key: f"输入的格式不对: {llm_output},应该输入 (市 区)的组合"}
+            return {self.output_key: f"无法提供天气预报: {llm_output},应该输入 (市 区)的组合"}
         return {self.output_key: answer}
 
     async def _aprocess_llm_result(
