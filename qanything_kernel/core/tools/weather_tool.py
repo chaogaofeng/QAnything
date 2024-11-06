@@ -207,7 +207,9 @@ def weather(query):
     try:
         city_info = get_city_info(location=location, adm=adm, key=key)
         location_id = city_info['location'][0]['id']
-        place = adm + "市" + location + "区"
+        place = adm + location
+        if adm == location:
+            place = adm
 
         weather_data = get_weather_now(key=key, location_id=location_id, place=place)
         return weather_data
@@ -215,7 +217,7 @@ def weather(query):
         try:
             city_info = get_city_info(location=adm, adm=adm, key=key)
             location_id = city_info['location'][0]['id']
-            place = adm + "市"
+            place = adm
             weather_data = get_weather_now(key=key, location_id=location_id, place=place)
             return weather_data
         except KeyError as e:
