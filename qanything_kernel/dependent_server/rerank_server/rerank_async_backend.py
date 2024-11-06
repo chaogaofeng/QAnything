@@ -141,9 +141,12 @@ class RerankAsyncBackend:
 
                 start = 0
                 for future, item_count in futures:
-                    end = start + item_count
-                    future.set_result(result[start:end])
-                    start = end
+                    try:
+                        end = start + item_count
+                        future.set_result(result[start:end])
+                        start = end
+                    except:
+                        pass
             else:
                 await asyncio.sleep(0.1)
 
