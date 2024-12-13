@@ -250,6 +250,7 @@ class KnowledgeBaseManager:
                 welcome_message LONGTEXT,
                 model           VARCHAR(100),
                 kb_ids_str      TEXT,
+                kb_weights_str  TEXT,
                 tools_str       TEXT,
                 max_token       INT DEFAULT 512,
                 status          INT DEFAULT 0,
@@ -888,13 +889,13 @@ class KnowledgeBaseManager:
 
     def new_qanything_bot(self, bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message,
                           model, kb_ids_str, tools_str=None, max_token=512, status=0, hybridSearch=0, networking=0,
-                          needSource=0):
+                          needSource=0, kb_weights_str=''):
         query = (
-            "INSERT INTO QanythingBot (bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+            "INSERT INTO QanythingBot (bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, kb_weights_str) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
         self.execute_query_(query, (
             bot_id, user_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str,
-            tools_str, max_token, status, hybridSearch, networking, needSource),
+            tools_str, max_token, status, hybridSearch, networking, needSource, kb_weights_str),
                             commit=True)
         return bot_id, "success"
 
@@ -905,13 +906,13 @@ class KnowledgeBaseManager:
 
     def get_bot(self, user_id, bot_id):
         if not bot_id:
-            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id FROM QanythingBot WHERE user_id = %s AND deleted = 0"
+            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id, kb_weights_str FROM QanythingBot WHERE user_id = %s AND deleted = 0"
             return self.execute_query_(query, (user_id,), fetch=True)
         elif not user_id:
-            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id FROM QanythingBot WHERE bot_id = %s AND deleted = 0"
+            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id, kb_weights_str FROM QanythingBot WHERE bot_id = %s AND deleted = 0"
             return self.execute_query_(query, (bot_id,), fetch=True)
         else:
-            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id FROM QanythingBot WHERE user_id = %s AND bot_id = %s AND deleted = 0"
+            query = "SELECT bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, user_id, kb_weights_str FROM QanythingBot WHERE user_id = %s AND bot_id = %s AND deleted = 0"
             return self.execute_query_(query, (user_id, bot_id), fetch=True)
 
     def get_bot_count(self, user_id, date_start=None, date_end=None):
@@ -925,12 +926,12 @@ class KnowledgeBaseManager:
         return result[0][0] if result else 0
 
     def update_bot(self, user_id, bot_id, bot_name, description, head_image, prompt_setting, welcome_message, model,
-                   kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time):
+                   kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, kb_weights_str=''):
         query = (
-            "UPDATE QanythingBot SET bot_name = %s, description = %s, head_image = %s, prompt_setting = %s, welcome_message = %s, model = %s, kb_ids_str = %s, "
+            "UPDATE QanythingBot SET bot_name = %s, description = %s, head_image = %s, prompt_setting = %s, welcome_message = %s, model = %s, kb_ids_str = %s, kb_weights_str = %s, "
             "tools_str = %s, max_token = %s, status = %s, hybridSearch = %s, networking = %s, needSource = %s, update_time = %s WHERE user_id = %s AND bot_id = %s AND deleted = 0")
         self.execute_query_(query, (
-            bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, tools_str, max_token,
+            bot_name, description, head_image, prompt_setting, welcome_message, model, kb_ids_str, kb_weights_str, tools_str, max_token,
             status, hybridSearch, networking, needSource, update_time, user_id,
             bot_id), commit=True)
 

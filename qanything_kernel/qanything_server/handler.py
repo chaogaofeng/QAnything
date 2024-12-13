@@ -672,10 +672,11 @@ async def local_doc_chat(req: request):
         if not local_doc_qa.milvus_summary.check_bot_is_exist(bot_id):
             return sanic_json({"code": 2003, "msg": "fail, Bot {} not found".format(bot_id)})
         bot_info = local_doc_qa.milvus_summary.get_bot(None, bot_id)[0]
-        bot_id, bot_name, desc, image, prompt, welcome, model_name, kb_ids_str, tools_str, max_token, status, hybrid_search, need_web_search, needSource, upload_time, user_id = bot_info
+        bot_id, bot_name, desc, image, prompt, welcome, model_name, kb_ids_str, tools_str, max_token, status, hybrid_search, need_web_search, needSource, upload_time, user_id, kb_weights_str = bot_info
         kb_ids = kb_ids_str.split(',')
         if not kb_ids:
             return sanic_json({"code": 2003, "msg": "fail, Bot {} unbound knowledge base.".format(bot_id)})
+        kb_weights = kb_weights_str.split(',')
         custom_prompt = prompt
         if model_name in SUPPPORT_MODELS:
             api_key = SUPPPORT_MODELS[model_name]['api_key']
@@ -722,6 +723,7 @@ async def local_doc_chat(req: request):
     debug_logger.info("history: %s ", history)
     debug_logger.info("question: %s", question)
     debug_logger.info("kb_ids: %s", kb_ids)
+    debug_logger.info("kb_weights: %s", kb_weights)
     debug_logger.info("user_id: %s", user_id)
     debug_logger.info("custom_prompt: %s", custom_prompt)
     debug_logger.info("model: %s", model)
@@ -772,6 +774,7 @@ async def local_doc_chat(req: request):
             async for resp, next_history in local_doc_qa.get_knowledge_based_answer(model=model,
                                                                                     max_token=max_token,
                                                                                     kb_ids=kb_ids,
+                                                                                    kb_weights=kb_weights,
                                                                                     query=question,
                                                                                     retriever=local_doc_qa.retriever,
                                                                                     chat_history=history,
@@ -1259,13 +1262,14 @@ async def get_bot_info(req: request):
         else:
             kb_ids = []
             kb_names = []
+        kb_weights = bot_info[16].split(',')
 
         tools = []
         if bot_info[8] != "":
             tools = bot_info[8].split(',')
         info = {"bot_id": bot_info[0], "user_id": user_id, "bot_name": bot_info[1], "description": bot_info[2],
                 "head_image": bot_info[3], "prompt_setting": bot_info[4], "welcome_message": bot_info[5],
-                "model": bot_info[6], "kb_ids": kb_ids, "kb_names": kb_names,
+                "model": bot_info[6], "kb_ids": kb_ids, "kb_names": kb_names, "kb_weights": kb_weights,
                 "tools": tools, "max_token": bot_info[9] , "status": bot_info[10], "hybridSearch": bot_info[11], "networking": bot_info[12], "needSource": bot_info[13],
                 "update_time": bot_info[14].strftime("%Y-%m-%d %H:%M:%S")}
         data.append(info)
@@ -1289,6 +1293,8 @@ async def new_bot(req: request):
     model = safe_get(req, "model", 'qwen-max')
     kb_ids = safe_get(req, "kb_ids", [])
     kb_ids_str = ",".join(kb_ids)
+    kb_weights = safe_get(req, "kb_weights", [])
+    kb_weights_str = ",".join(kb_weights)
     tools = safe_get(req, "tools", [])
     tools_str = ",".join(tools)
     max_token = safe_get(req, "max_token", 512)
@@ -1301,10 +1307,12 @@ async def new_bot(req: request):
     if not_exist_kb_ids:
         msg = "invalid kb_id: {}, please check...".format(not_exist_kb_ids)
         return sanic_json({"code": 2001, "msg": msg, "data": [{}]})
+    if kb_weights and len(kb_ids) != len(kb_weights):
+        return sanic_json({"code": 2001, "msg": "kb_weights length not equal to kb_ids", "data": [{}]})
     debug_logger.info("new_bot %s", user_id)
     bot_id = 'BOT' + uuid.uuid4().hex
     local_doc_qa.milvus_summary.new_qanything_bot(bot_id, user_id, bot_name, desc, head_image, prompt_setting,
-                                                  welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource)
+                                                  welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, kb_weights_str)
     create_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return sanic_json({"code": 200, "msg": "success create qanything bot {}".format(bot_id),
                        "data": {"bot_id": bot_id, "bot_name": bot_name, "create_time": create_time}})
@@ -1349,6 +1357,7 @@ async def update_bot(req: request):
     welcome_message = safe_get(req, "welcome_message", bot_info[5])
     model = safe_get(req, "model", bot_info[6])
     kb_ids = safe_get(req, "kb_ids")
+    kb_weights = safe_get(req, "kb_weights")
     if kb_ids is not None:
         not_exist_kb_ids = local_doc_qa.milvus_summary.check_kb_exist(user_id, kb_ids)
         if not_exist_kb_ids:
@@ -1357,6 +1366,13 @@ async def update_bot(req: request):
         kb_ids_str = ",".join(kb_ids)
     else:
         kb_ids_str = bot_info[7]
+    if kb_weights is not None:
+        kb_weights_str = ",".join(kb_weights)
+    else:
+        kb_weights_str = bot_info[16]
+    if kb_ids_str is not None and kb_weights_str is not None:
+        if len(kb_ids_str.split(',')) != len(kb_weights_str.spit(',')):
+            return sanic_json({"code": 2001, "msg": "kb_weights length not equal to kb_ids", "data": [{}]})
     tools = safe_get(req, "tools")
     if tools is not None:
         tools_str = ",".join(tools)
@@ -1387,7 +1403,7 @@ async def update_bot(req: request):
     update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     debug_logger.info(f"update_time: {update_time}")
     local_doc_qa.milvus_summary.update_bot(user_id, bot_id, bot_name, description, head_image, prompt_setting,
-                                           welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time)
+                                           welcome_message, model, kb_ids_str, tools_str, max_token, status, hybridSearch, networking, needSource, update_time, kb_weights_str)
     return sanic_json({"code": 200, "msg": "Bot {} update success".format(bot_id)})
 
 

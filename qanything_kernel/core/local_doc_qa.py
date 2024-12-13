@@ -367,7 +367,7 @@ class LocalDocQA:
 
         return relevant_docs
 
-    async def get_knowledge_based_answer(self, model, max_token, kb_ids, query, retriever, custom_prompt, time_record,
+    async def get_knowledge_based_answer(self, model, max_token, kb_ids, kb_weights, query, retriever, custom_prompt, time_record,
                                          temperature, api_base, api_key, api_context_length, top_p, top_k,
                                          web_chunk_size,
                                          chat_history=None, streaming: bool = STREAMING, rerank: bool = False,
