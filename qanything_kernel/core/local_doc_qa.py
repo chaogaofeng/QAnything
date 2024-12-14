@@ -437,7 +437,17 @@ class LocalDocQA:
 
         only_weather = "天气" in query
         if not only_weather and kb_ids:
-            source_documents = await self.get_source_documents(retrieval_query, retriever, kb_ids, time_record,
+            if kb_weights:
+                source_documents = []
+                for kb_id, kb_weight in zip(kb_ids, kb_weights) :
+                    k = int(top_k * kb_weight / 100)
+                    if k > 0:
+                        source_documents_s = await self.get_source_documents(retrieval_query, retriever, [kb_id], time_record,
+                                                               hybrid_search, k)
+                        source_documents.extend(source_documents_s)
+
+            else:
+                source_documents = await self.get_source_documents(retrieval_query, retriever, kb_ids, time_record,
                                                                hybrid_search, top_k)
         else:
             source_documents = []
