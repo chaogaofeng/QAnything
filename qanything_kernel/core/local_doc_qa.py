@@ -440,7 +440,9 @@ class LocalDocQA:
             if kb_weights:
                 source_documents = []
                 for kb_id, kb_weight in zip(kb_ids, kb_weights) :
-                    k = int(top_k * kb_weight / 100)
+                    k = int(top_k * int(kb_weight) / 100)
+                    if int(kb_weight) > 1 and k == 0:
+                        k = 1
                     if k > 0:
                         source_documents_s = await self.get_source_documents(retrieval_query, retriever, [kb_id], time_record,
                                                                hybrid_search, k)

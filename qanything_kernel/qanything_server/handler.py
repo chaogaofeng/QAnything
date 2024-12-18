@@ -676,7 +676,7 @@ async def local_doc_chat(req: request):
         kb_ids = kb_ids_str.split(',')
         if not kb_ids:
             return sanic_json({"code": 2003, "msg": "fail, Bot {} unbound knowledge base.".format(bot_id)})
-        kb_weights = kb_weights_str.split(',')
+        kb_weights = kb_weights_str.split(',') if kb_weights_str else []
         custom_prompt = prompt
         if model_name in SUPPPORT_MODELS:
             api_key = SUPPPORT_MODELS[model_name]['api_key']
@@ -1262,7 +1262,7 @@ async def get_bot_info(req: request):
         else:
             kb_ids = []
             kb_names = []
-        kb_weights = bot_info[16].split(',')
+        kb_weights = bot_info[16].split(',') if bot_info[16] else []
 
         tools = []
         if bot_info[8] != "":
@@ -1371,7 +1371,7 @@ async def update_bot(req: request):
     else:
         kb_weights_str = bot_info[16]
     if kb_ids_str is not None and kb_weights_str is not None:
-        if len(kb_ids_str.split(',')) != len(kb_weights_str.spit(',')):
+        if len(kb_ids_str.split(',')) != len(kb_weights_str.split(',')):
             return sanic_json({"code": 2001, "msg": "kb_weights length not equal to kb_ids", "data": [{}]})
     tools = safe_get(req, "tools")
     if tools is not None:
