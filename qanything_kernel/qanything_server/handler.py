@@ -651,7 +651,6 @@ async def local_doc_chat(req: request):
     debug_logger.info('rerank %s', rerank)
     streaming = safe_get(req, 'streaming', False)
     history = safe_get(req, 'history', [])
-    history = []
     only_need_search_results = safe_get(req, 'only_need_search_results', False)
     need_web_search = safe_get(req, 'networking', False)
     api_base = safe_get(req, 'api_base', '')
@@ -858,6 +857,7 @@ async def local_doc_chat(req: request):
         async for resp, history in local_doc_qa.get_knowledge_based_answer(model=model,
                                                                            max_token=max_token,
                                                                            kb_ids=kb_ids,
+                                                                           kb_weights=kb_weights,
                                                                            query=question,
                                                                            retriever=local_doc_qa.retriever,
                                                                            chat_history=history, streaming=False,

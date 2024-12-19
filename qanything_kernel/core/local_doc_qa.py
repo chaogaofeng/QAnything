@@ -381,18 +381,22 @@ class LocalDocQA:
         condense_question = query
         if chat_history:
             formatted_chat_history = []
-            for msg in chat_history:
-                if isinstance(msg, dict):
-                    formatted_chat_history += [
-                        HumanMessage(content=msg['question']),
-                        AIMessage(content=msg['response']),
-                    ]
-                else:
-                    formatted_chat_history += [
-                        HumanMessage(content=msg[0]),
-                        AIMessage(content=msg[1]),
-                    ]
-            debug_logger.info(f"formatted_chat_history: {formatted_chat_history}")
+            try:
+                for msg in chat_history:
+                    if isinstance(msg, dict):
+                        formatted_chat_history += [
+                            HumanMessage(content=msg['question']),
+                            AIMessage(content=msg['response']),
+                        ]
+                    else:
+                        formatted_chat_history += [
+                            HumanMessage(content=msg[0]),
+                            AIMessage(content=msg[1]),
+                        ]
+                debug_logger.info(f"formatted_chat_history: {formatted_chat_history}")
+            except Exception as e:
+                debug_logger.error(f"format chat_history error: {traceback.format_exc()}")
+
 
             rewrite_q_chain = RewriteQuestionChain(model_name=model, openai_api_base=api_base, openai_api_key=api_key)
             full_prompt = rewrite_q_chain.condense_q_prompt.format(
