@@ -294,9 +294,9 @@ class KnowledgeBaseManager:
             "CREATE INDEX index_bot_id ON QaLogs (bot_id)",
             "CREATE INDEX index_query ON QaLogs (query)",
             "CREATE INDEX index_timestamp ON QaLogs (timestamp)"
-            "CREATE INDEX index_bot_id ON QaLogs_Warn (bot_id)",
-            "CREATE INDEX index_query ON QaLogs_Warn (query)",
-            "CREATE INDEX index_timestamp ON QaLogs_Warn (timestamp)"
+            "CREATE INDEX index_bot_id_warn ON QaLogs_Warn (bot_id)",
+            "CREATE INDEX index_query_warn ON QaLogs_Warn (query)",
+            "CREATE INDEX index_timestamp_warn ON QaLogs_Warn (timestamp)"
         ]
 
         for query in index_queries:
