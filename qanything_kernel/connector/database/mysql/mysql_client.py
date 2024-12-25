@@ -218,6 +218,29 @@ class KnowledgeBaseManager:
         """
         self.execute_query_(query, (), commit=True)
 
+        # 创建一个QaLogs_Warn表，用于记录用户的操作日志
+        query = """
+            CREATE TABLE IF NOT EXISTS QaLogs_Warn (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                qa_id VARCHAR(255) UNIQUE,
+                user_id VARCHAR(255) NOT NULL,
+                bot_id VARCHAR(255),
+                kb_ids VARCHAR(2048) NOT NULL,
+                query VARCHAR(512) NOT NULL,
+                model VARCHAR(64) NOT NULL,
+                product_source VARCHAR(64) NOT NULL,
+                time_record VARCHAR(512) NOT NULL,
+                history MEDIUMTEXT NOT NULL,
+                condense_question VARCHAR(1024) NOT NULL,
+                prompt MEDIUMTEXT NOT NULL,
+                result TEXT NOT NULL,
+                retrieval_documents MEDIUMTEXT NOT NULL,
+                source_documents MEDIUMTEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """
+        self.execute_query_(query, (), commit=True)
+
         # create_index_query = "CREATE INDEX IF NOT EXISTS index_bot_id ON QaLogs (bot_id);"
         # self.execute_query_(create_index_query, (), commit=True)
         # create_index_query = "CREATE INDEX IF NOT EXISTS index_query ON QaLogs (query);"
@@ -271,6 +294,9 @@ class KnowledgeBaseManager:
             "CREATE INDEX index_bot_id ON QaLogs (bot_id)",
             "CREATE INDEX index_query ON QaLogs (query)",
             "CREATE INDEX index_timestamp ON QaLogs (timestamp)"
+            "CREATE INDEX index_bot_id ON QaLogs_Warn (bot_id)",
+            "CREATE INDEX index_query ON QaLogs_Warn (query)",
+            "CREATE INDEX index_timestamp ON QaLogs_Warn (timestamp)"
         ]
 
         for query in index_queries:
@@ -795,6 +821,72 @@ class KnowledgeBaseManager:
         placeholders = ','.join(['%s'] * len(ids))
         need_info = ", ".join(need_info)
         query = "SELECT {} FROM QaLogs WHERE qa_id IN ({})".format(need_info, placeholders)
+        return self.execute_query_(query, ids, fetch=True)
+
+    def add_qalog_warn(self, user_id, bot_id, kb_ids, query, model, product_source, time_record, history, condense_question,
+                  prompt, result, retrieval_documents, source_documents):
+        debug_logger.info("add_qalog_warn: {}".format(query))
+        qa_id = uuid.uuid4().hex
+        kb_ids = json.dumps(kb_ids, ensure_ascii=False)
+        retrieval_documents = json.dumps(retrieval_documents, ensure_ascii=False)
+        source_documents = json.dumps(source_documents, ensure_ascii=False)
+        history = json.dumps(history, ensure_ascii=False)
+        time_record = json.dumps(time_record, ensure_ascii=False)
+        insert_query = (
+            "INSERT INTO QaLogs_Warn (qa_id, user_id, bot_id, kb_ids, query, model, product_source, time_record, "
+            "history, condense_question, prompt, result, retrieval_documents, source_documents) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+        self.execute_query_(insert_query, (qa_id, user_id, bot_id, kb_ids, query, model, product_source, time_record,
+                                           history, condense_question, prompt, result, retrieval_documents,
+                                           source_documents), commit=True)
+
+    def get_qalog_warn_by_filter(self, need_info, user_id=None, query=None, bot_id=None, time_range=None, any_kb_id=None,
+                            qa_ids=None):
+        # 判断哪些条件不是None，构建搜索query
+        need_info = ", ".join(need_info)
+        if qa_ids is not None:
+            mysql_query = f"SELECT {need_info} FROM QaLogs_Warn WHERE qa_id IN ({','.join(['%s'] * len(qa_ids))})"
+            qa_infos = self.execute_query_(mysql_query, qa_ids, fetch=True)
+        else:
+            mysql_query = f"SELECT {need_info} FROM QaLogs_Warn WHERE timestamp BETWEEN %s AND %s"
+            params = list(time_range)
+            if user_id:
+                mysql_query += " AND user_id = %s"
+                params.append(user_id)
+            if any_kb_id:
+                mysql_query += " AND kb_ids LIKE %s"
+                params.append(f'%{any_kb_id}%')
+            if bot_id:
+                mysql_query += " AND bot_id = %s"
+                params.append(bot_id)
+            if query:
+                mysql_query += " AND query = %s"
+                params.append(query)
+            debug_logger.info("get_qalog_warn_by_filter: {}".format(params))
+            qa_infos = self.execute_query_(mysql_query, params, fetch=True)
+        # 根据need_info构建一个dict
+        qa_infos = [dict(zip(need_info.split(", "), qa_info)) for qa_info in qa_infos]
+        for qa_info in qa_infos:
+            if 'timestamp' in qa_info:
+                qa_info['timestamp'] = qa_info['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
+            if 'kb_ids' in qa_info:
+                qa_info['kb_ids'] = json.loads(qa_info['kb_ids'])
+            if 'time_record' in qa_info:
+                qa_info['time_record'] = json.loads(qa_info['time_record'])
+            if 'retrieval_documents' in qa_info:
+                qa_info['retrieval_documents'] = json.loads(qa_info['retrieval_documents'])
+            if 'source_documents' in qa_info:
+                qa_info['source_documents'] = json.loads(qa_info['source_documents'])
+            if 'history' in qa_info:
+                qa_info['history'] = json.loads(qa_info['history'])
+        if 'timestamp' in need_info:
+            qa_infos = sorted(qa_infos, key=lambda x: x["timestamp"], reverse=True)
+        return qa_infos
+
+    def get_qalog_warn_by_ids(self, ids, need_info):
+        placeholders = ','.join(['%s'] * len(ids))
+        need_info = ", ".join(need_info)
+        query = "SELECT {} FROM QaLogs_Warn WHERE qa_id IN ({})".format(need_info, placeholders)
         return self.execute_query_(query, ids, fetch=True)
 
     def get_faq_by_question(self, question, kb_id):

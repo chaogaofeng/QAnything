@@ -814,6 +814,8 @@ async def local_doc_chat(req: request):
                                  'result': result, 'retrieval_documents': retrieval_documents,
                                  'source_documents': source_documents, 'bot_id': bot_id}
                     local_doc_qa.milvus_summary.add_qalog(**chat_data)
+                    if '无法回答' in result:
+                        local_doc_qa.milvus_summary.add_qalog_warn(**chat_data)
                     qa_logger.info("chat_data: %s", chat_data)
                     debug_logger.info("response: %s", chat_data['result'])
                     stream_res = {
@@ -890,6 +892,8 @@ async def local_doc_chat(req: request):
                      'retrieval_documents': retrieval_documents, 'prompt': resp['prompt'], 'result': history[-1][1],
                      'source_documents': source_documents, 'bot_id': bot_id}
         local_doc_qa.milvus_summary.add_qalog(**chat_data)
+        if '无法回答' in result:
+            local_doc_qa.milvus_summary.add_qalog_warn(**chat_data)
         qa_logger.info("chat_data: %s", chat_data)
         debug_logger.info("response: %s", chat_data['result'])
         return sanic_json({"code": 200, "msg": "success no stream chat", "question": question,
@@ -1064,6 +1068,96 @@ async def get_qa_info(req: request):
     need_info = safe_get(req, 'need_info', default_need_info)
     save_to_excel = safe_get(req, 'save_to_excel', False)
     qa_infos = local_doc_qa.milvus_summary.get_qalog_by_filter(need_info=need_info, user_id=user_id, query=query,
+                                                               bot_id=bot_id, time_range=time_range,
+                                                               any_kb_id=any_kb_id, qa_ids=qa_ids)
+    if save_to_excel:
+        timestamp = datetime.now().strftime("%Y%m%d%H%M")
+        file_name = f"QAnything_QA_{timestamp}.xlsx"
+        file_path = export_qalogs_to_excel(qa_infos, need_info, file_name)
+        return await response.file(file_path, filename=file_name,
+                                   mime_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                   headers={'Content-Disposition': f'attachment; filename="{file_name}"'})
+
+    # 计算总记录数
+    total_count = len(qa_infos)
+    # 计算总页数
+    total_pages = (total_count + page_limit - 1) // page_limit
+    if page_id > total_pages and total_count != 0:
+        return sanic_json(
+            {"code": 2002, "msg": f'输入非法！page_id超过最大值，page_id: {page_id}，最大值：{total_pages}，请检查！'})
+    # 计算当前页的起始和结束索引
+    start_index = (page_id - 1) * page_limit
+    end_index = start_index + page_limit
+    # 截取当前页的数据
+    current_qa_infos = qa_infos[start_index:end_index]
+    msg = f"检测到的Log总数为{total_count}, 本次返回page_id为{page_id}的数据，每页显示{page_limit}条"
+
+    # if len(qa_infos) > 100:
+    #     pages = math.ceil(len(qa_infos) // 100)
+    #     if page_id is None:
+    #         msg = f"检索到的Log数超过100，需要分页返回，总数为{len(qa_infos)}, 请使用page_id参数获取某一页数据，参数范围：[0, {pages - 1}], 本次返回page_id为0的数据"
+    #         qa_infos = qa_infos[:100]
+    #         page_id = 0
+    #     elif page_id >= pages:
+    #         return sanic_json(
+    #             {"code": 2002, "msg": f'输入非法！page_id超过最大值，page_id: {page_id}，最大值：{pages - 1}，请检查！'})
+    #     else:
+    #         msg = f"检索到的Log数超过100，需要分页返回，总数为{len(qa_infos)}, page范围：[0, {pages - 1}], 本次返回page_id为{page_id}的数据"
+    #         qa_infos = qa_infos[page_id * 100:(page_id + 1) * 100]
+    # else:
+    #     msg = f"检索到的Log数为{len(qa_infos)}，一次返回所有数据"
+    #     page_id = 0
+    return sanic_json(
+        {"code": 200, "msg": msg, "page_id": page_id, "page_limit": page_limit, "qa_infos": current_qa_infos,
+         "total_count": total_count})
+
+@get_time_async
+async def get_qa_warn_info(req: request):
+    local_doc_qa: LocalDocQA = req.app.ctx.local_doc_qa
+    any_kb_id = safe_get(req, 'any_kb_id')
+    user_id = safe_get(req, 'user_id')
+    if user_id is None and not any_kb_id:
+        return sanic_json({"code": 2005, "msg": "fail, user_id and any_kb_id is None"})
+    if any_kb_id:
+        any_kb_id = correct_kb_id(any_kb_id)
+        debug_logger.info("get_qa_info %s", any_kb_id)
+    if user_id:
+        user_info = safe_get(req, 'user_info', "1234")
+        passed, msg = check_user_id_and_user_info(user_id, user_info)
+        if not passed:
+            return sanic_json({"code": 2001, "msg": msg})
+        user_id = user_id + '__' + user_info
+        debug_logger.info("get_qa_info %s", user_id)
+    query = safe_get(req, 'query')
+    bot_id = safe_get(req, 'bot_id')
+    qa_ids = safe_get(req, "qa_ids")
+    time_start = safe_get(req, 'time_start')
+    time_end = safe_get(req, 'time_end')
+    time_range = get_time_range(time_start, time_end)
+    if not time_range:
+        return {"code": 2002, "msg": f'输入非法！time_start格式错误，time_start: {time_start}，示例：2024-10-05，请检查！'}
+    only_need_count = safe_get(req, 'only_need_count', False)
+    debug_logger.info(f"only_need_count: {only_need_count}")
+    if only_need_count:
+        need_info = ["timestamp"]
+        qa_infos = local_doc_qa.milvus_summary.get_qalog_warn_by_filter(need_info=need_info, user_id=user_id,
+                                                                   time_range=time_range)
+        # timestamp = now.strftime("%Y%m%d%H%M")
+        # 按照timestamp，按照天数进行统计，比如20240628，20240629，20240630，计算每天的问答数量
+        qa_infos = sorted(qa_infos, key=lambda x: x['timestamp'])
+        qa_infos = [qa_info['timestamp'] for qa_info in qa_infos]
+        qa_infos = [qa_info[:10] for qa_info in qa_infos]
+        qa_infos_by_day = dict(Counter(qa_infos))
+        return sanic_json({"code": 200, "msg": "success", "qa_infos_by_day": qa_infos_by_day})
+
+    page_id = safe_get(req, 'pageNum', 1)
+    page_limit = safe_get(req, 'pageSize', 100)
+    default_need_info = ["qa_id", "user_id", "bot_id", "kb_ids", "query", "model", "product_source", "time_record",
+                         "history", "condense_question", "prompt", "result", "retrieval_documents", "source_documents",
+                         "timestamp"]
+    need_info = safe_get(req, 'need_info', default_need_info)
+    save_to_excel = safe_get(req, 'save_to_excel', False)
+    qa_infos = local_doc_qa.milvus_summary.get_qalog_warn_by_filter(need_info=need_info, user_id=user_id, query=query,
                                                                bot_id=bot_id, time_range=time_range,
                                                                any_kb_id=any_kb_id, qa_ids=qa_ids)
     if save_to_excel:
