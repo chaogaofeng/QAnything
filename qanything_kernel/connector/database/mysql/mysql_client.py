@@ -509,7 +509,7 @@ class KnowledgeBaseManager:
         query = "UPDATE File SET status = %s WHERE file_id IN ({}) AND status = %s".format(file_ids_str)
         self.execute_query_(query, (to_status, from_status), commit=True)
 
-    def get_files(self, user_id, kb_id, file_id=None, tp=0, page=None, limit=None):
+    def get_files(self, user_id, kb_id, file_id=None, tp=0, page=None, limit=None, status=None):
         files = []
         base_query = """
             SELECT file_id, file_name, status, file_size, content_length, timestamp,
@@ -531,19 +531,35 @@ class KnowledgeBaseManager:
 
         if page and limit:
             if tp:
-                query = base_query + "AND tp = %s ORDER BY timestamp DESC LIMIT %s OFFSET %s"
-                current_params = params + [tp, limit, (page - 1) * limit]
+                if status:
+                    query = base_query + "AND tp = %s AND status=%s ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+                    current_params = params + [tp, status, limit, (page - 1) * limit]
+                else:
+                    query = base_query + "AND tp = %s ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+                    current_params = params + [tp, limit, (page - 1) * limit]
             else:
-                query = base_query + " ORDER BY timestamp DESC LIMIT %s OFFSET %s"
-                current_params = params + [limit, (page - 1) * limit]
+                if status:
+                    query = base_query + "AND status=%s ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+                    current_params = params + [status, limit, (page - 1) * limit]
+                else:
+                    query = base_query + " ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+                    current_params = params + [limit, (page - 1) * limit]
             files = self.execute_query_(query, current_params, fetch=True)
         else:
             if tp:
-                query = base_query + "AND tp = %s ORDER BY timestamp DESC"
-                current_params = params + [tp]
+                if status:
+                    query = base_query + "AND tp = %s AND status=%s ORDER BY timestamp DESC"
+                    current_params = params + [tp,status]
+                else:
+                    query = base_query + "AND tp = %s ORDER BY timestamp DESC"
+                    current_params = params + [tp]
             else:
-                query = base_query + " ORDER BY timestamp DESC"
-                current_params = params
+                if status:
+                    query = base_query + "AND status=%s ORDER BY timestamp DESC"
+                    current_params = params + [status]
+                else:
+                    query = base_query + " ORDER BY timestamp DESC"
+                    current_params = params
             files = self.execute_query_(query, current_params, fetch=True)
 
         return files
