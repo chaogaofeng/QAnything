@@ -94,7 +94,7 @@ app.add_route(delete_knowledge_base, "/api/local_doc_qa/delete_knowledge_base", 
 app.add_route(rename_knowledge_base, "/api/local_doc_qa/rename_knowledge_base", methods=['POST'])  # tags=["重命名知识库"]
 app.add_route(get_doc_completed, "/api/local_doc_qa/get_doc_completed", methods=['POST'])  # tags=["获取文档完整解析内容"]
 app.add_route(get_qa_info, "/api/local_doc_qa/get_qa_info", methods=['POST'])  # tags=["获取QA信息"]
-app.add_route(get_qa_warn_info, "/api/local_doc_qa/get_warn_info", methods=['POST'])  # tags=["获取QA信息"]
+app.add_route(get_qa_warn_info, "/api/local_doc_qa/get_warn_info", methods=['POST'])  # tags=["获取QA WARN信息"]
 app.add_route(get_user_id, "/api/local_doc_qa/get_user_id", methods=['POST'])  # tags=["获取用户ID"]
 app.add_route(get_doc, "/api/local_doc_qa/get_doc", methods=['POST'])  # tags=["获取doc详细内容"]
 app.add_route(get_rerank_results, "/api/local_doc_qa/get_rerank_results", methods=['POST'])  # tags=["获取rerank结果"]
