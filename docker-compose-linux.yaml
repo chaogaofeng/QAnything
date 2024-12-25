@@ -6,7 +6,7 @@ services:
     privileged: true
     ports:
       - "9210:9200"
-    restart: on-failure
+    restart: always
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -29,6 +29,7 @@ services:
   etcd:
     container_name: milvus-etcd-local
     image: quay.io/coreos/etcd:v3.5.5
+    restart: always
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
       - ETCD_AUTO_COMPACTION_RETENTION=1000
@@ -46,6 +47,7 @@ services:
   minio:
     container_name: milvus-minio-local
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    restart: always
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -64,6 +66,7 @@ services:
   standalone:
     container_name: milvus-standalone-local
     image: milvusdb/milvus:v2.4.8
+    restart: always
     logging:
       driver: "json-file"
       options:
@@ -93,6 +96,7 @@ services:
     container_name: mysql-container-local
     privileged: true
     image: mysql:8.4
+    restart: always
     ports:
       - "3316:3306"
     command: --max-connections=10000
@@ -105,6 +109,7 @@ services:
   qanything_local:
     container_name: qanything-container-local
     image: xixihahaliu01/qanything-linux:v1.5.1
+    restart: always
     command: /bin/bash -c "cd /workspace/QAnything && bash scripts/entrypoint.sh"
     privileged: true
     shm_size: '8gb'
