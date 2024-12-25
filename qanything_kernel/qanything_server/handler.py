@@ -26,7 +26,7 @@ import base64
 
 __all__ = ["new_knowledge_base", "upload_files", "list_kbs", "list_docs", "delete_knowledge_base", "delete_docs",
            "rename_knowledge_base", "get_total_status", "clean_files_by_status", "upload_weblink", "local_doc_chat",
-           "document", "upload_faqs", "get_doc_completed", "get_qa_info", "get_user_id", "get_doc",
+           "document", "upload_faqs", "get_doc_completed", "get_qa_info", "get_qa_warn_info", "get_user_id", "get_doc",
            "get_rerank_results", "get_user_status", "health_check", "update_chunks", "get_file_base64",
            "get_random_qa", "get_related_qa", "new_bot", "delete_bot", "update_bot", "get_bot_info",
            "embed_docs", "list_models", "list_tools", "list_embed", "list_roles", "statistic"]
