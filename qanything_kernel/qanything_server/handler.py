@@ -814,7 +814,7 @@ async def local_doc_chat(req: request):
                                  'result': result, 'retrieval_documents': retrieval_documents,
                                  'source_documents': source_documents, 'bot_id': bot_id}
                     local_doc_qa.milvus_summary.add_qalog(**chat_data)
-                    if '无法回答' in result:
+                    if '无法回答' in chat_data['result']:
                         local_doc_qa.milvus_summary.add_qalog_warn(**chat_data)
                     qa_logger.info("chat_data: %s", chat_data)
                     debug_logger.info("response: %s", chat_data['result'])
@@ -892,7 +892,7 @@ async def local_doc_chat(req: request):
                      'retrieval_documents': retrieval_documents, 'prompt': resp['prompt'], 'result': history[-1][1],
                      'source_documents': source_documents, 'bot_id': bot_id}
         local_doc_qa.milvus_summary.add_qalog(**chat_data)
-        if '无法回答' in result:
+        if '无法回答' in chat_data['result']:
             local_doc_qa.milvus_summary.add_qalog_warn(**chat_data)
         qa_logger.info("chat_data: %s", chat_data)
         debug_logger.info("response: %s", chat_data['result'])
