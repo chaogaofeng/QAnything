@@ -29,7 +29,6 @@ from pydantic import BaseModel, Field
 ## 使用和风天气API查询天气
 KEY = ""
 
-
 _PROMPT_TEMPLATE = """
 用户会提出一个关于天气的问题，你的目标是拆分出用户问题中的区，市 并按照我提供的工具回答。
 例如 用户提出的问题是: 上海浦东未来1小时天气情况？
@@ -142,10 +141,7 @@ def format_weather_data(data, place):
 
 
 def get_weather(key, location_id, place):
-    if KEY:
-        url = "https://api.qweather.com/v7/weather/24h?"
-    else:
-        url = "https://devapi.qweather.com/v7/weather/24h?"
+    url = "https://devapi.qweather.com/v7/weather/24h?"
     params = {
         'location': location_id,
         'key': key,
@@ -176,10 +172,7 @@ def format_weather_data_now(data, place):
 
 
 def get_weather_now(key, location_id, place):
-    if KEY:
-        url = "https://api.qweather.com/v7/weather/now?"
-    else:
-        url = "https://devapi.qweather.com/v7/weather/now?"
+    url = "https://devapi.qweather.com/v7/weather/now?"
     params = {
         'location': location_id,
         'key': key,
@@ -188,6 +181,67 @@ def get_weather_now(key, location_id, place):
     data = response.json()
     return format_weather_data_now(data, place)
 
+
+def format_weather_data_day(data, place):
+    print(data)
+    hourly_forecast = data['daily']
+    formatted_data = f"\n{place} 今日天气信息: \n"
+    for forecast in hourly_forecast:
+        # 将预报时间转换为datetime对象
+        forecast_time = datetime.strptime(forecast['fxDate'], '%Y-%m-%d')
+        # # 获取预报时间的时区
+        # forecast_tz = forecast_time.tzinfo
+        # # 获取当前时间（使用预报时间的时区）
+        # now = datetime.now(forecast_tz)
+        # # 计算预报日期与当前日期的差值
+        # days_diff = (forecast_time.date() - now.date()).days
+        # if days_diff == 0:
+        #     forecast_date_str = '今天'
+        # elif days_diff == 1:
+        #     forecast_date_str = '明天'
+        # elif days_diff == 2:
+        #     forecast_date_str = '后天'
+        # else:
+        #     forecast_date_str = str(days_diff) + '天后'
+        # forecast_time_str = forecast_date_str + ' ' + forecast_time.strftime('%H:%M')
+        # # 计算预报时间与当前时间的差值
+        # time_diff = forecast_time - now
+        # # 将差值转换为小时
+        # hours_diff = time_diff.total_seconds() // 3600
+        # if hours_diff < 1:
+        #     hours_diff_str = '1小时后'
+        # elif hours_diff >= 24:
+        #     # 如果超过24小时，转换为天数
+        #     days_diff = hours_diff // 24
+        #     hours_diff_str = str(int(days_diff)) + '天'
+        # else:
+        #     hours_diff_str = str(int(hours_diff)) + '小时'
+        # 将预报时间和当前时间的差值添加到输出中
+        # formatted_data += '预报时间: ' + forecast_time_str + '  距离现在有: ' + hours_diff_str + '\n'
+        formatted_data += '预报时间: ' + forecast['fxDate']  + '\n'
+        formatted_data += '最高温度: ' + forecast['tempMax'] + '°C\n'
+        formatted_data += '最低温度: ' + forecast['tempMin'] + '°C\n'
+        formatted_data += '天气: ' + forecast['textDay'] + '\n'
+        formatted_data += '风向: ' + forecast['windDirDay'] + '\n'
+        formatted_data += '风速: ' + forecast['windSpeedDay'] + '级\n'
+        formatted_data += '湿度: ' + forecast['humidity'] + '%\n'
+        # formatted_data += '降水概率: ' + forecast.get('pop', '0') + '%\n'
+        formatted_data += '降水量: ' + forecast['precip'] + 'mm\n'
+        formatted_data += '\n'
+        break
+    return formatted_data
+
+
+def get_weather_day(key, location_id, place):
+    url = "https://devapi.qweather.com/v7/weather/3d?"
+    params = {
+        'location': location_id,
+        'key': key,
+    }
+    print(url)
+    response = requests.get(url, params=params)
+    data = response.json()
+    return format_weather_data_day(data, place)
 
 
 def split_query(query):
@@ -203,7 +257,7 @@ def weather(query):
     location, adm = split_query(query)
     key = KEY
     if key == "":
-        key = "ac880e5a877042809ac7ffdd19d95b0d"
+        key = "f29cc1e3734e4985ba45af038f979c7c"
     try:
         city_info = get_city_info(location=location, adm=adm, key=key)
         location_id = city_info['location'][0]['id']
@@ -211,14 +265,14 @@ def weather(query):
         if adm == location:
             place = adm
 
-        weather_data = get_weather_now(key=key, location_id=location_id, place=place)
+        weather_data = get_weather_day(key=key, location_id=location_id, place=place)
         return weather_data
     except KeyError:
         try:
             city_info = get_city_info(location=adm, adm=adm, key=key)
             location_id = city_info['location'][0]['id']
             place = adm
-            weather_data = get_weather_now(key=key, location_id=location_id, place=place)
+            weather_data = get_weather_day(key=key, location_id=location_id, place=place)
             return weather_data
         except KeyError as e:
             return f"输入的地区不存在，无法提供天气预报 {e}"
