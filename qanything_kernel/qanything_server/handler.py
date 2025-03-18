@@ -1626,7 +1626,7 @@ async def embed_docs(req: request):
     all_qa = safe_get(req, "all_qa", 'false')
     if all_qa:
         file_ids = []
-        file_infos = local_doc_qa.milvus_summary.get_files(user_id, kb_id)
+        file_infos = local_doc_qa.milvus_summary.get_files(user_id, kb_id, tp=2)
         for file_info in file_infos:
             status = file_info[2]
             if status != 'green':  # 'gray': "未开始", 'yellow': "进行中",   'red': "失败", 'green': "成功"
