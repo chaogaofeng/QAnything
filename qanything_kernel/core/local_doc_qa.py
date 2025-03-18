@@ -510,34 +510,34 @@ class LocalDocQA:
                                     doc.metadata['file_name'].endswith('.faq') and float(doc.metadata['score'] >= 0.9)]
         if high_score_faq_documents:
             source_documents = high_score_faq_documents
-        # FAQ完全匹配处理逻辑
-        for doc in source_documents:
-            if doc.metadata['file_name'].endswith('.faq') and clear_string_is_equal(
-                    doc.metadata['faq_dict']['question'], query):
-                debug_logger.info(f"match faq question: {query}")
-                if only_need_search_results:
-                    yield source_documents, None
-                    return
-                res = doc.metadata['faq_dict']['answer']
-                history = chat_history + [[query, res]]
-                if streaming:
-                    res = 'data: ' + json.dumps({'answer': res}, ensure_ascii=False)
-                response = {"query": query,
-                            "prompt": 'MATCH_FAQ',
-                            "result": res,
-                            "condense_question": condense_question,
-                            "retrieval_documents": source_documents,
-                            "source_documents": source_documents}
-                time_record['llm_completed'] = 0.0
-                time_record['total_tokens'] = 0
-                time_record['prompt_tokens'] = 0
-                time_record['completion_tokens'] = 0
-                yield response, history
-                if streaming:
-                    response['result'] = "data: [DONE]\n\n"
-                    yield response, history
-                # 退出函数
-                return
+        # # FAQ完全匹配处理逻辑
+        # for doc in source_documents:
+        #     if doc.metadata['file_name'].endswith('.faq') and clear_string_is_equal(
+        #             doc.metadata['faq_dict']['question'], query):
+        #         debug_logger.info(f"match faq question: {query}")
+        #         if only_need_search_results:
+        #             yield source_documents, None
+        #             return
+        #         res = doc.metadata['faq_dict']['answer']
+        #         history = chat_history + [[query, res]]
+        #         if streaming:
+        #             res = 'data: ' + json.dumps({'answer': res}, ensure_ascii=False)
+        #         response = {"query": query,
+        #                     "prompt": 'MATCH_FAQ',
+        #                     "result": res,
+        #                     "condense_question": condense_question,
+        #                     "retrieval_documents": source_documents,
+        #                     "source_documents": source_documents}
+        #         time_record['llm_completed'] = 0.0
+        #         time_record['total_tokens'] = 0
+        #         time_record['prompt_tokens'] = 0
+        #         time_record['completion_tokens'] = 0
+        #         yield response, history
+        #         if streaming:
+        #             response['result'] = "data: [DONE]\n\n"
+        #             yield response, history
+        #         # 退出函数
+        #         return
 
         # es检索+milvus检索结果最多可能是2k
         source_documents = source_documents[:top_k]
